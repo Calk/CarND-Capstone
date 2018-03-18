@@ -3,7 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
-
+from scipy.spatial import KDTree
 import math
 
 '''
@@ -37,16 +37,39 @@ class WaypointUpdater(object):
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
-
+        self.waypoints = None
+        self.waypoints_received = False
+        
         rospy.spin()
 
     def pose_cb(self, msg):
-        # TODO: Implement
-        pass
-
-    def waypoints_cb(self, waypoints):
-        # TODO: Implement
-        pass
+        
+        if not self.waypoints_received : return # Don't do anything if waypoints are not present
+        
+        # Query the KD Tree. nearest_waypoint will be an index of the waypoint closest to the car
+        _, nearest_waypoint = self.waypoint_tree.query([msg.pose.position.x, msg.pose.position.y])
+        
+        waypoint_list = []
+        
+        number_of_waypoints = len(self.waypoints)
+        for idx in range(nearest_waypoint, nearest_waypoint+LOOKAHEAD_WPS):
+            waypoint_list.append(self.waypoints[idx % number_of_waypoints])
+        
+        lane = Lane()
+        lane.waypoints = waypoint_list
+        
+        self.final_waypoints_pub.publish(lane)
+        
+        
+    def waypoints_cb(self, lane):
+        rospy.loginfo("Received {} waypoints".format(len(lane.waypoints)))
+        
+        self.waypoints = lane.waypoints
+        
+        xy_waypoint_list = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in self.waypoints]
+        self.waypoint_tree = KDTree(xy_waypoint_list)
+        
+        self.waypoints_received = True
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
