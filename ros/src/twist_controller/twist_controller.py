@@ -15,7 +15,11 @@ class Controller(object):
         # TODO: Change the arg, kwarg list to suit your needs
         # Return throttle, brake, steer
         
-        accelerate = self.acceleration_controller.step(linear_v - current_v ,1./50.)
+        if not dbw_enabled:
+            self.acceleration_controller.reset()
+            return 0., 0., 0.
+            
+        accelerate = self.acceleration_controller.step(linear_v - current_v , 1./50.)
         
         
         brake = 0.
