@@ -6,6 +6,7 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 from scipy.spatial import KDTree
 import math
+from jmt import JerkMinimizingTrajectory
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
