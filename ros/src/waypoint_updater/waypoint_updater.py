@@ -6,7 +6,7 @@ from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 from scipy.spatial import KDTree
 import math
-from jmt import JerkMinimizingTrajectory
+#from jmt import JerkMinimizingTrajectory
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -57,18 +57,21 @@ class WaypointUpdater(object):
         waypoint_list = []
 
         #TODO decelerate waypoints
-        '''
         if self.stop_node >= 0:
-            # set stop node to 0 velocity
-            self.set_waypoint_velocity( self.waypoints, self.stop_node, 0)
+            dist = self.distance(self.waypoints, nearest_waypoint, self.stop_node)
+            self.set_waypoint_velocity(self.waypoints, self.stop_node, 0)
 
-            for i in range(nearest_waypoint, self.stop_node):
-                dist = self.distance(self.waypoints, i, self.stop_node)
-                vel = math.sqrt(2 * MAX_DECEL * dist)
-                if vel < 1.:
-                    vel = 0.
-                self.set_waypoint_velocity(self.waypoints, i, vel)
-        '''
+            #TODO Wrap wayopints
+            #TODO implement JMT
+            if dist<70:
+                for i in range(nearest_waypoint, self.stop_node):
+                    self.set_waypoint_velocity(self.waypoints, i, 0.1)
+            if dist<20:
+                for i in range(nearest_waypoint, self.stop_node):
+                    self.set_waypoint_velocity(self.waypoints, i, 0.01)
+        else:
+            for i in range(nearest_waypoint, nearest_waypoint+100):
+                self.set_waypoint_velocity(self.waypoints, i, 11.11)
 
         number_of_waypoints = len(self.waypoints)
         for idx in range(nearest_waypoint, nearest_waypoint+LOOKAHEAD_WPS):
