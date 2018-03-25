@@ -9,7 +9,7 @@ class Controller(object):
     def __init__(self, car_properties):
         self.yaw_controller = YawController(car_properties)
         
-        self.acceleration_controller = PID(1.,0.,0., mn=-1., mx=1.)
+        self.acceleration_controller = PID(0.1,3.e-3,4.e-3, mn=-1., mx=1.)
 
     def control(self, linear_v, angular_v, current_v, dbw_enabled):
         # TODO: Change the arg, kwarg list to suit your needs
