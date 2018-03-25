@@ -14,7 +14,7 @@ import yaml
 from scipy.spatial import KDTree
 
 
-STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 2
 
 class TLDetector(object):
     def __init__(self):
@@ -32,10 +32,12 @@ class TLDetector(object):
         self.waypoints_received = False
         
         # Initialize the classifier before subscribing to topics
-        
-        rospy.loginfo('Loading Classifier')
-        self.light_classifier = TLClassifier()
-        rospy.loginfo('Loaded Classifier')
+        if not self.simulate_lights:
+            rospy.loginfo('Loading Classifier')
+            self.light_classifier = TLClassifier()
+            rospy.loginfo('Loaded Classifier')
+        else:
+            rospy.logwarn('Simulated Traffic lights')
         
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -48,7 +50,7 @@ class TLDetector(object):
         rely on the position of the light and the camera image to predict it.
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=1)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -64,7 +66,7 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
-        rospy.spin()
+        self.loop()
 
     def pose_cb(self, msg):
         self.pose = msg
@@ -90,6 +92,15 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
+    
+    def loop(self):
+        rate = rospy.Rate(.5) # .5Hz
+        while not rospy.is_shutdown():
+            if self.camera_image or self.simulate_lights:
+                self.publish_light_state()
+            rate.sleep()
+    
+    def publish_light_state(self):
         light_wp, state = self.process_traffic_lights()
 
         '''
@@ -146,8 +157,10 @@ class TLDetector(object):
         if(not self.has_image):
             self.prev_light_loc = None
             return False
-
+            
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        self.camera_image = None
+        
 
         #Get classification
         return self.light_classifier.get_classification(cv_image)
