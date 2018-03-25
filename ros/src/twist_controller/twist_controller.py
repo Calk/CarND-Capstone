@@ -19,6 +19,9 @@ class Controller(object):
             self.acceleration_controller.reset()
             return 0., 0., 0.
             
+        if linear_v < ONE_MPH and current_v < ONE_MPH:
+            return 0., 0.3, 0
+            
         accelerate = self.acceleration_controller.step(linear_v - current_v , 1./50.)
         
         
