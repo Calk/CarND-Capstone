@@ -1,3 +1,4 @@
+import rospy
 from styx_msgs.msg import TrafficLight
 
 import numpy as np
@@ -9,6 +10,7 @@ import urllib
 import sys
 import tarfile
 import tensorflow as tf 
+
 
 
 def get_tensors(graph):
@@ -50,8 +52,9 @@ class TLClassifier(object):
     def classify_image(self, image, output_dict):
         boxes = [box for box, cls, score in zip(output_dict['detection_boxes:0'][0],
            output_dict['detection_classes:0'][0],
-           output_dict['detection_scores:0'][0]) if score > 0.7 and cls == 10]
-    
+           output_dict['detection_scores:0'][0]) if score > 0.5 and cls == 10]
+           
+        rospy.loginfo("Found {} possible lights". format(len(boxes)))
         for box in boxes:
             x_0, y_0, x_1, y_1 = box
             subimg = image[int(image.shape[0]*x_0):int(image.shape[0]*x_1),int(image.shape[1]*y_0):int(image.shape[1]*y_1),:]
