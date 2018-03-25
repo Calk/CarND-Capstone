@@ -25,6 +25,8 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 1.0
+BRAKE_DISTANCE = 130
+MAX_VELOCITY = 11.11
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -44,6 +46,8 @@ class WaypointUpdater(object):
         self.waypoints_received = False
 
         self.stop_node = None
+        
+        self.stop_jmt = None
 
         rospy.spin()
 
@@ -58,20 +62,31 @@ class WaypointUpdater(object):
 
         #TODO decelerate waypoints
         if self.stop_node >= 0:
-            dist = self.distance(self.waypoints, nearest_waypoint, self.stop_node)
-            self.set_waypoint_velocity(self.waypoints, self.stop_node, 0)
-
-            #TODO Wrap wayopints
-            #TODO implement JMT
-            if dist<70:
+            
+            if self.stop_jmt is None:
+                
+                rospy.loginfo('Decelerating to waypoint {}'.format(self.stop_node))
+                self.stop_jmt = True
+                
+                self.set_waypoint_velocity(self.waypoints, self.stop_node, 0)
+                
+                #TODO Wrap wayopints
+                #TODO implement JMT
+                
+                stop_distance = self.distance(self.waypoints, nearest_waypoint, self.stop_node)
+                brake_distance = min(BRAKE_DISTANCE, stop_distance)
+                
+                
                 for i in range(nearest_waypoint, self.stop_node):
-                    self.set_waypoint_velocity(self.waypoints, i, 0.1)
-            if dist<20:
-                for i in range(nearest_waypoint, self.stop_node):
-                    self.set_waypoint_velocity(self.waypoints, i, 0.01)
+                    dist = self.distance(self.waypoints, i, self.stop_node)
+                    if dist < brake_distance:
+                        # Decelerate linear
+                        self.set_waypoint_velocity(self.waypoints, i, dist/brake_distance*MAX_VELOCITY)
+                        
         else:
-            for i in range(nearest_waypoint, nearest_waypoint+100):
-                self.set_waypoint_velocity(self.waypoints, i, 11.11)
+            self.stop_jmt = None
+            for i in range(nearest_waypoint, nearest_waypoint+LOOKAHEAD_WPS):
+                self.set_waypoint_velocity(self.waypoints, i, MAX_VELOCITY)
 
         number_of_waypoints = len(self.waypoints)
         for idx in range(nearest_waypoint, nearest_waypoint+LOOKAHEAD_WPS):
@@ -95,7 +110,11 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
-        self.stop_node = msg.data
+        if self.stop_node != msg.data:
+            self.stop_jmt = None
+            self.stop_node = msg.data
+            rospy.loginfo("Received STOP waypoint: {}".format(msg.data))
+        
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
