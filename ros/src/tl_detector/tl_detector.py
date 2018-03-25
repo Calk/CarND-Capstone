@@ -21,7 +21,7 @@ class TLDetector(object):
         rospy.init_node('tl_detector')
         
         # Important: SET THIS TO FALSE IN PRODUCTION
-        self.simulate_lights = True
+        self.simulate_lights = False
         
         self.pose = None
         self.waypoints = None
@@ -30,6 +30,12 @@ class TLDetector(object):
         
         self.waypoint_tree = None
         self.waypoints_received = False
+        
+        # Initialize the classifier before subscribing to topics
+        
+        rospy.loginfo('Loading Classifier')
+        self.light_classifier = TLClassifier()
+        rospy.loginfo('Loaded Classifier')
         
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -42,7 +48,7 @@ class TLDetector(object):
         rely on the position of the light and the camera image to predict it.
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=1)
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -50,7 +56,7 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
+        
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -68,8 +74,6 @@ class TLDetector(object):
         
         xy_waypoint_list = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in self.waypoints]
         self.waypoint_tree = KDTree(xy_waypoint_list)
-        
-        
         
         self.waypoints_received = True
         
@@ -191,6 +195,7 @@ class TLDetector(object):
                 state = self.get_simulated_light_state(light)
             else:
                 state = self.get_light_state(light)
+                rospy.loginfo("classified image " + str(state))
             return light_wp, state
             
         return -1, TrafficLight.UNKNOWN
