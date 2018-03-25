@@ -7,7 +7,7 @@ from std_msgs.msg import Int32
 from scipy.spatial import KDTree
 import math
 #from jmt import JerkMinimizingTrajectory
-
+from rospy import get_param
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
 
@@ -47,13 +47,13 @@ class WaypointUpdater(object):
         self.stop_node = None
 
         self.stop_jmt = None
-        self.max_velocity = 0
+        self.max_velocity = (get_param('/waypoint_loader/velocity') * 1000.) / (60. * 60.) # velocity in mps
 
         rospy.spin()
-        
+
     def wrap_wp_index(self, idx):
         return idx % len(self.waypoints)
-        
+
     def pose_cb(self, msg):
 
         if not self.waypoints_received : return # Don't do anything if waypoints are not present
@@ -108,8 +108,6 @@ class WaypointUpdater(object):
 
         xy_waypoint_list = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in self.waypoints]
         self.waypoint_tree = KDTree(xy_waypoint_list)
-
-        self.max_velocity = self.waypoints[len(lane.waypoints)/2].twist.twist.linear.x
 
         self.waypoints_received = True
 
