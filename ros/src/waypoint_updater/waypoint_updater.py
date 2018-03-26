@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 from scipy.spatial import KDTree
@@ -32,6 +32,8 @@ class WaypointUpdater(object):
         rospy.init_node('waypoint_updater')
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
+
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
@@ -43,6 +45,7 @@ class WaypointUpdater(object):
         # TODO: Add other member variables you need below
         self.waypoints = None
         self.waypoints_received = False
+        self.current_velocity = 0
 
         self.stop_node = None
 
@@ -56,7 +59,10 @@ class WaypointUpdater(object):
         while idx < 0:
             idx += number_of_waypoints
         return idx % number_of_waypoints
-
+        
+    def velocity_cb(self, msg):
+        self.current_velocity = msg.twist.linear.x
+        
     def pose_cb(self, msg):
 
         if not self.waypoints_received : return # Don't do anything if waypoints are not present
