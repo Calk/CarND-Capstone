@@ -94,7 +94,7 @@ class TLDetector(object):
         self.camera_image = msg
     
     def loop(self):
-        rate = rospy.Rate(.5) # .5Hz
+        rate = rospy.Rate(2.) # 2.0Hz
         while not rospy.is_shutdown():
             if self.camera_image or self.simulate_lights:
                 self.publish_light_state()
