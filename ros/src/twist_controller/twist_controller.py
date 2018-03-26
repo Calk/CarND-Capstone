@@ -20,7 +20,7 @@ class Controller(object):
             return 0., 0., 0.
             
         if linear_v < ONE_MPH and current_v < ONE_MPH:
-            return 0., 0.3, 0
+            return 0., 2, 0
             
         accelerate = self.acceleration_controller.step(linear_v - current_v , 1./50.)
         
@@ -30,7 +30,7 @@ class Controller(object):
         if accelerate > 0:
             throttle = accelerate
         else:
-            brake = -accelerate
+            brake = -accelerate*200
         
         steer = self.yaw_controller.get_steering(linear_v, angular_v, current_v)
         
