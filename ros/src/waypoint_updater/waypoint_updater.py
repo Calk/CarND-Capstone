@@ -25,7 +25,8 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 1.0
-BRAKE_DISTANCE = 130
+BRAKE_DISTANCE = 50
+STOP_WAYPOINT_OFFSET = 5 # Number of waypoints to stop before the actual traffic light.
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -71,29 +72,34 @@ class WaypointUpdater(object):
         _, nearest_waypoint = self.waypoint_tree.query([msg.pose.position.x, msg.pose.position.y])
 
         waypoint_list = []
-
+        stop_waypoint = -1
+        
         #TODO decelerate waypoints
         if self.stop_node >= 0:
+            stop_waypoint = self.wrap_wp_index(self.stop_node - STOP_WAYPOINT_OFFSET)
 
             if self.stop_jmt is None:
 
-                rospy.loginfo('Decelerating to waypoint {}'.format(self.stop_node))
+                rospy.loginfo('Decelerating to waypoint {}'.format(stop_waypoint))
                 self.stop_jmt = True
+                
+                
 
-                self.set_waypoint_velocity(self.waypoints, self.stop_node, 0)
+                self.set_waypoint_velocity(self.waypoints, stop_waypoint, 0)
 
                 #TODO Wrap wayopints
                 #TODO implement JMT
 
-                stop_distance = self.distance(self.waypoints, nearest_waypoint, self.stop_node)
+                stop_distance = self.distance(self.waypoints, nearest_waypoint, stop_waypoint)
                 brake_distance = min(BRAKE_DISTANCE, stop_distance)
 
 
-                for i in range(nearest_waypoint, self.stop_node):
-                    dist = self.distance(self.waypoints, i, self.stop_node)
+                for i in range(nearest_waypoint, stop_waypoint):
+                    dist = self.distance(self.waypoints, i, stop_waypoint)
                     if dist < brake_distance:
                         # Decelerate linear
-                        self.set_waypoint_velocity(self.waypoints, i, dist/brake_distance*self.max_velocity)
+                        decel_velocity = max(min(self.current_velocity, self.max_velocity), 3.)
+                        self.set_waypoint_velocity(self.waypoints, i, dist/brake_distance*decel_velocity)
 
         else:
             self.stop_jmt = None
@@ -102,7 +108,10 @@ class WaypointUpdater(object):
 
         number_of_waypoints = len(self.waypoints)
         for idx in range(nearest_waypoint, nearest_waypoint+LOOKAHEAD_WPS):
-            waypoint_list.append(self.waypoints[idx % number_of_waypoints])
+            
+            if stop_waypoint >= 0 and self.wrap_wp_index(idx) > self.stop_node: continue 
+            
+            waypoint_list.append(self.waypoints[self.wrap_wp_index(idx)])
 
         lane = Lane()
         lane.waypoints = waypoint_list
