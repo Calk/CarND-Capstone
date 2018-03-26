@@ -52,7 +52,10 @@ class WaypointUpdater(object):
         rospy.spin()
 
     def wrap_wp_index(self, idx):
-        return idx % len(self.waypoints)
+        number_of_waypoints = len(self.waypoints)
+        while idx < 0:
+            idx += number_of_waypoints
+        return idx % number_of_waypoints
 
     def pose_cb(self, msg):
 
